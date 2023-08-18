@@ -1,6 +1,5 @@
 -- Queries written in completion of Udacity's SQL for Data Analysis course
 
-
 -- Can You Use LIMIT?
 -- Try using LIMIT yourself below by writing a query that displays all the data in the occurred_at, account_id, and channel columns of the web_events table, and limits the output to only the first 15 rows.
 SELECT occurred_at, 
@@ -131,7 +130,7 @@ WHERE channel NOT IN ('organic', 'adwords');
 
 
 
--- Questions using AND and BETWEEN operators
+-- Questions using AND and BETWEEN operators 
 -- Write a query that returns all the orders where the standard_qty is over 1000, the poster_qty is 0, and the gloss_qty is 0.
 SELECT * 
 FROM orders
