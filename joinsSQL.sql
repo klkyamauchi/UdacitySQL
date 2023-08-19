@@ -154,7 +154,8 @@ ON w.account_id = a.id
 WHERE a.id = 1001;
 
 
--- Find all the orders that occurred in 2015. Your final table should have 4 columns: occurred_at, account name, order total, and order total_amt_usd.
+-- Find all the orders that occurred in 2015. Your final table should have 4 columns: occurred_at,
+--  account name, order total, and order total_amt_usd.
 SELECT o.occurred_at,
          a.name, 
          o.total, 
