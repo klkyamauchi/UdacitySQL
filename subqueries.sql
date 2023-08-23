@@ -30,6 +30,7 @@ GROUP BY channel
 ORDER BY avg_num_events DESC;
 
 
+
 -- Q1. Use DATE_TRUNC to pull month level information about the first order ever placed in the orders table
 SELECT DATE_TRUNC('month', MIN(occurred_at)) AS first_month 
 FROM orders;
@@ -175,7 +176,6 @@ HAVING SUM(o.total_amt_usd) =
 
 -- Q3. How many accounts had more total purchases than the account name which has bought the most standard_qty paper 
 -- throughout their lifetime as a customer?
-
 -- first need to find most standard_qty paper purchased
 SELECT a.name AS account_name,
         SUM(o.standard_qty) AS total_standard_qty,
@@ -261,7 +261,6 @@ ORDER BY 3 DESC;
 
 
 -- Q5. What is the lifetime average amount spent in terms of total_amt_usd for the top 10 total spending accounts?
-
 -- first want to find the top 10 spending accounts
 SELECT a.id AS account_id,
         a.name AS account_name, 
@@ -307,4 +306,126 @@ FROM (SELECT o.account_id,
         FROM orders o 
         GROUP BY 1
         HAVING AVG(o.total_amt_usd) > (SELECT AVG(total_amt_usd) FROM orders )) t1; 
+
+
+-- **** WITH STATEMENTS ****
+-- Q1. Provide the name of the sales_rep in each region with the largest amount of total_amt_usd sales.
+WITH t1 AS (SELECT r.name region, s.name sales_rep,
+                    SUM(o.total_amt_usd) AS total_sales
+            FROM orders o 
+            JOIN accounts a
+            ON o.account_id = a.id
+            JOIN sales_reps s
+            ON a.sales_rep_id = s.id
+            JOIN region r 
+            ON s.region_id = r.id 
+            GROUP BY r.name, s.name
+            ORDER BY total_sales DESC),
+
+    t2 AS (SELECT region,
+                    MAX(total_sales) AS max_sales
+            FROM t1
+            GROUP BY region)
+
+SELECT t1.sales_rep, t2.region, t2.max_sales
+FROM t1
+JOIN t2
+ON t1.region = t2.region AND t1.total_sales = t2.max_sales;
+
+
+-- Q2. For the region with the largest sales total_amt_usd, how many total orders were placed?
+WITH t1 AS (SELECT r.name region, SUM(o.total_amt_usd) AS total_sales
+            FROM orders o 
+            JOIN accounts a
+            ON o.account_id = a.id
+            JOIN sales_reps s
+            ON a.sales_rep_id = s.id
+            JOIN region r 
+            ON s.region_id = r.id 
+            GROUP BY region
+            ORDER BY total_sales DESC),
+
+    t2 AS  (SELECT MAX(total_sales)
+            FROM t1)
+
+SELECT r.name, COUNT(o.total) AS total_orders
+FROM orders o 
+JOIN accounts a
+ON o.account_id = a.id
+JOIN sales_reps s
+ON a.sales_rep_id = s.id
+JOIN region r 
+ON s.region_id = r.id 
+GROUP BY r.name
+HAVING SUM(o.total_amt_usd) = (SELECT * FROM t2);
+
+-- Q3. How many accounts had more total purchases than the account name which has 
+-- bought the most standard_qty paper throughout their lifetime as a customer?
+
+--acct who bought the most standard_qty
+WITH t1 AS (SELECT a.name, 
+                    SUM(o.standard_qty) AS total_standard_qty,
+                    SUM(o.total) AS total
+            FROM orders o 
+            JOIN accounts a
+            ON o.account_id = a.id
+            GROUP BY a.name
+            ORDER BY total_standard_qty DESC
+            LIMIT 1),
+
+    t2 AS (SELECT a.name, SUM(o.total) AS total_purchases 
+            FROM orders o
+            JOIN accounts a
+            ON o.account_id = a.id
+            GROUP BY a.name
+            HAVING SUM(o.total) > (SELECT total
+                                    FROM t1))
+
+SELECT COUNT(*)
+FROM t2;
+
+
+-- Q4. For the customer that spent the most (in total over their lifetime as a customer) 
+-- total_amt_usd, how many web_events did they have for each channel?
+WITH t1 AS (SELECT o.account_id customer, SUM(o.total_amt_usd)
+            FROM orders o
+            GROUP BY 1
+            ORDER BY 2 DESC
+            LIMIT 1)
+
+SELECT w.account_id, 
+        w. channel,
+        COUNT(*) num_events
+FROM web_events w
+JOIN t1
+ON w.account_id = t1.customer
+GROUP BY w.account_id, w.channel
+ORDER BY num_events DESC;
+
+
+-- Q5. What is the lifetime average amount spent in terms of total_amt_usd for the top 10 total spending accounts?
+WITH t1 AS (SELECT o.account_id,
+                    SUM(total_amt_usd) total_spent
+            FROM orders o
+            GROUP BY o.account_id
+            ORDER BY total_spent DESC
+            LIMIT 10)
+
+SELECT AVG(total_spent)
+FROM t1;
+
+-- Q6. What is the lifetime average amount spent in terms of total_amt_usd, 
+-- including only the companies that spent more per order, on average, than the average of all orders.
+WITH t1 AS (SELECT AVG(total_amt_usd)
+            FROM orders),
+
+    t2 AS (SELECT account_id,
+                    AVG(total_amt_usd) avg_total
+            FROM orders
+            GROUP BY account_id
+            HAVING AVG(total_amt_usd) > (SELECT *
+                                        FROM t1))
+
+SELECT AVG(avg_total)
+FROM t2;
 
