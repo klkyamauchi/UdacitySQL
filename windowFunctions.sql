@@ -1,0 +1,1 @@
+-- Queries written in completion of Udacity's SQL for Data Analysis course
